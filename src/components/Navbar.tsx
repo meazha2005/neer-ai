@@ -15,7 +15,7 @@ import {
   Waves,
   Menu,
   X,
-  ChevronRight,
+  FileDown,
 } from 'lucide-react';
 
 export type NavTabType =
@@ -33,6 +33,8 @@ interface NavbarProps {
   onOpenComplaintModal: () => void;
   onSelectPredefinedLocation: (loc: { name: string; lat: number; lng: number }) => void;
   selectedLocationName: string;
+  onDownloadPDF?: () => void;
+  isDownloadingPDF?: boolean;
 }
 
 export const REGIONS = [
@@ -52,6 +54,8 @@ export default function Navbar({
   onOpenComplaintModal,
   onSelectPredefinedLocation,
   selectedLocationName,
+  onDownloadPDF,
+  isDownloadingPDF = false,
 }: NavbarProps) {
   const [currentTime, setCurrentTime] = useState<string>('');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -166,19 +170,33 @@ export default function Navbar({
           </nav>
 
           {/* Action Buttons on Right */}
-          <div className="flex items-center gap-2 sm:gap-2.5">
+          <div className="flex items-center gap-1.5 sm:gap-2.5">
             {/* Live Clock on desktop / tablet */}
             {currentTime && (
-              <div className="hidden md:flex items-center gap-1.5 font-mono text-xs text-blue-900 bg-blue-50/80 px-2.5 py-1 rounded-lg border border-blue-200 font-semibold">
+              <div className="hidden 2xl:flex items-center gap-1.5 font-mono text-xs text-blue-900 bg-blue-50/80 px-2.5 py-1 rounded-lg border border-blue-200 font-semibold">
                 <Clock className="w-3.5 h-3.5 text-blue-600" />
                 <span>{currentTime}</span>
               </div>
             )}
 
+            {/* Download PDF Button */}
+            {onDownloadPDF && (
+              <button
+                onClick={onDownloadPDF}
+                disabled={isDownloadingPDF}
+                title="Download Complete Hydrological & Agro Intelligence Report as PDF"
+                className="px-2.5 sm:px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold flex items-center gap-1.5 shadow-sm shadow-emerald-600/25 transition whitespace-nowrap cursor-pointer disabled:opacity-50"
+              >
+                <FileDown className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Download PDF</span>
+                <span className="sm:hidden">PDF</span>
+              </button>
+            )}
+
             {/* Raise Grievance Button */}
             <button
               onClick={onOpenComplaintModal}
-              className="px-3 sm:px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-blue-600 to-sky-600 hover:from-blue-700 hover:to-sky-700 text-white text-xs font-extrabold flex items-center gap-1.5 shadow-md shadow-blue-600/25 transition whitespace-nowrap cursor-pointer"
+              className="px-2.5 sm:px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-blue-600 to-sky-600 hover:from-blue-700 hover:to-sky-700 text-white text-xs font-extrabold flex items-center gap-1.5 shadow-md shadow-blue-600/25 transition whitespace-nowrap cursor-pointer"
             >
               <PlusCircle className="w-3.5 h-3.5" />
               <span className="hidden xs:inline">Raise Grievance</span>
@@ -190,6 +208,21 @@ export default function Navbar({
         {/* Mobile Slide-down Navigation Menu */}
         {mobileMenuOpen && (
           <div className="lg:hidden border-t border-blue-100 bg-white/98 px-4 py-4 space-y-3 shadow-lg animate-in slide-in-from-top-3 duration-200">
+            {/* Mobile Download PDF Quick Action */}
+            {onDownloadPDF && (
+              <button
+                onClick={() => {
+                  onDownloadPDF();
+                  setMobileMenuOpen(false);
+                }}
+                disabled={isDownloadingPDF}
+                className="w-full p-2.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 text-emerald-800 text-xs font-bold flex items-center justify-center gap-2 transition"
+              >
+                <FileDown className="w-4 h-4 text-emerald-600" />
+                <span>Download Full Hydrological PDF Report</span>
+              </button>
+            )}
+
             {/* Mobile Region Switcher */}
             <div className="bg-blue-50/80 p-3 rounded-xl border border-blue-200">
               <label className="text-[11px] font-bold text-blue-900 block mb-1.5 flex items-center gap-1">

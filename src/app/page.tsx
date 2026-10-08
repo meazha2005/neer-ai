@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import Navbar, { NavTabType } from '@/components/Navbar';
 import MapWrapper from '@/components/Map/MapWrapper';
 import WeatherWidget from '@/components/WeatherWidget';
@@ -13,6 +13,8 @@ import DroughtAlertsWidget from '@/components/DroughtAlertsWidget';
 import ComplaintModal from '@/components/Complaints/ComplaintModal';
 import AdminDashboard from '@/components/Complaints/AdminDashboard';
 import ChatbotDrawer from '@/components/Chatbot/ChatbotDrawer';
+import SearchBar from '@/components/SearchBar';
+import { generateHydrologicalPDF } from '@/lib/pdfGenerator';
 
 import { Dam, GroundwaterStation, LiveWeatherData, AgroSuitabilityResult, WaterComplaint } from '@/types';
 import damsData from '@/data/dams.json';
@@ -34,13 +36,19 @@ import {
   ArrowRight,
   CloudSun,
   Layers,
+  Navigation,
+  FileDown,
+  Loader2,
 } from 'lucide-react';
 
 export default function Home() {
   const [activeTab, setActiveTab] = useState<NavTabType>('dashboard');
   const [isComplaintModalOpen, setIsComplaintModalOpen] = useState(false);
+  const [isLocating, setIsLocating] = useState(false);
+  const [gpsNotification, setGpsNotification] = useState<string | null>(null);
+  const [isDownloadingPDF, setIsDownloadingPDF] = useState(false);
 
-  // Selected Location (Default: Chennai / Tamil Nadu)
+  // Selected Location (Default: Chennai / Tamil Nadu or GPS)
   const [selectedLocation, setSelectedLocation] = useState({
     name: 'Chennai & Red Hills Basin',
     lat: 13.0827,
@@ -61,6 +69,63 @@ export default function Home() {
   const [nearestStation, setNearestStation] = useState<GroundwaterStation | null>(null);
   const [suitability, setSuitability] = useState<AgroSuitabilityResult | null>(null);
   const [complaints, setComplaints] = useState<WaterComplaint[]>([]);
+
+  // 1. AUTO-DETECT USER REAL-TIME LOCATION AT FIRST LOADING
+  const detectUserLocation = useCallback(() => {
+    if (typeof window === 'undefined' || !('geolocation' in navigator)) {
+      return;
+    }
+    setIsLocating(true);
+    setGpsNotification('Detecting your GPS location...');
+
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        const lat = Number(pos.coords.latitude.toFixed(4));
+        const lng = Number(pos.coords.longitude.toFixed(4));
+        setIsLocating(false);
+
+        // Reverse geocode with OpenStreetMap Nominatim
+        try {
+          const res = await fetch(
+            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`,
+            { headers: { 'Accept-Language': 'en' } }
+          );
+          if (res.ok) {
+            const data = await res.json();
+            const place =
+              data.address?.city ||
+              data.address?.town ||
+              data.address?.village ||
+              data.address?.suburb ||
+              data.address?.county ||
+              data.display_name?.split(',')[0] ||
+              'My Location';
+            setSelectedLocation({ lat, lng, name: `📍 ${place} (Current GPS)` });
+            setGpsNotification(`Located at ${place}! Telemetry updated.`);
+            setTimeout(() => setGpsNotification(null), 4000);
+            return;
+          }
+        } catch {
+          // Fallback
+        }
+
+        setSelectedLocation({ lat, lng, name: `📍 My GPS Location (${lat}, ${lng})` });
+        setGpsNotification(`GPS Lock acquired (${lat}, ${lng}).`);
+        setTimeout(() => setGpsNotification(null), 4000);
+      },
+      (err) => {
+        setIsLocating(false);
+        setGpsNotification(null);
+        console.info('GPS permission prompt dismissed or unavailable:', err.message);
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
+    );
+  }, []);
+
+  // Trigger on initial mount
+  useEffect(() => {
+    detectUserLocation();
+  }, [detectUserLocation]);
 
   // Load complaints from LocalStorage
   useEffect(() => {
@@ -137,87 +202,142 @@ export default function Home() {
     setActiveTab('map');
   };
 
+  // PDF DOWNLOAD HANDLER
+  const handleDownloadPDF = () => {
+    try {
+      setIsDownloadingPDF(true);
+      generateHydrologicalPDF({
+        location: selectedLocation,
+        weather,
+        dams: nearestDams,
+        groundwaterStation: nearestStation,
+        suitability,
+        complaints,
+      });
+    } catch (err) {
+      console.error('Error generating PDF:', err);
+      alert('Could not generate PDF. Please try again.');
+    } finally {
+      setIsDownloadingPDF(false);
+    }
+  };
+
   const avgDamStorage = nearestDams.length > 0
     ? Math.round(nearestDams.reduce((acc, d) => acc + d.storagePercentage, 0) / nearestDams.length)
     : 65;
 
   return (
     <div className="min-h-screen bg-[#f8fafc] text-slate-800 flex flex-col selection:bg-blue-600 selection:text-white">
-      {/* Top Navbar */}
+      {/* Top Navbar with Download PDF and Mobile Menu */}
       <Navbar
         activeTab={activeTab}
         setActiveTab={setActiveTab}
         onOpenComplaintModal={() => setIsComplaintModalOpen(true)}
         onSelectPredefinedLocation={(loc) => setSelectedLocation(loc)}
         selectedLocationName={selectedLocation.name}
+        onDownloadPDF={handleDownloadPDF}
+        isDownloadingPDF={isDownloadingPDF}
       />
 
-      {/* Main Content Area - Optimized Padding for Mobile Thumb Navigation */}
+      {/* Main Content Area */}
       <main className="flex-1 max-w-7xl w-full mx-auto p-3 sm:p-5 lg:p-8 pb-24 sm:pb-20 lg:pb-8 space-y-4 sm:space-y-6">
-        {/* Basin Location Header */}
-        <div className="bg-white border border-blue-100 rounded-2xl p-3.5 sm:p-5 flex flex-col md:flex-row md:items-center justify-between gap-3.5 shadow-xs">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-blue-50 border border-blue-200 flex items-center justify-center text-blue-600 shadow-2xs shrink-0">
-              <MapPin className="w-5 h-5 sm:w-6 sm:h-6" />
-            </div>
+        {/* GPS Notification Toast if Active */}
+        {gpsNotification && (
+          <div className="bg-blue-600 text-white px-4 py-2.5 rounded-xl text-xs font-bold flex items-center justify-between shadow-md shadow-blue-500/20 animate-in fade-in slide-in-from-top-2 duration-200">
+            <span className="flex items-center gap-2">
+              <Navigation className="w-4 h-4 text-sky-200 animate-pulse" />
+              {gpsNotification}
+            </span>
+            <button
+              onClick={() => setGpsNotification(null)}
+              className="text-white/80 hover:text-white font-normal text-xs"
+            >
+              ✕
+            </button>
+          </div>
+        )}
+
+        {/* Global Universal Search Bar Header with PDF Download & Layer Toggles */}
+        <section className="bg-white border border-blue-100 rounded-2xl p-3.5 sm:p-5 shadow-xs space-y-3.5">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
             <div>
               <div className="flex items-center gap-2">
-                <span className="text-[11px] sm:text-xs uppercase font-extrabold tracking-wider text-blue-700">
-                  Target Hydrological Basin
+                <span className="text-[10px] sm:text-xs uppercase font-black tracking-wider text-blue-700">
+                  Target Basin &amp; Location
                 </span>
                 <span className="text-[10px] sm:text-[11px] font-mono text-blue-900 bg-blue-50 border border-blue-200 px-2 py-0.5 rounded-md font-bold">
                   {selectedLocation.lat.toFixed(4)}°N, {selectedLocation.lng.toFixed(4)}°E
                 </span>
               </div>
-              <h2 className="text-base sm:text-lg font-black text-slate-900 mt-0.5 tracking-tight truncate max-w-[280px] sm:max-w-none">
-                {selectedLocation.name}
+              <h2 className="text-base sm:text-lg font-black text-slate-900 mt-0.5 tracking-tight flex items-center gap-1.5">
+                <MapPin className="w-4 h-4 text-blue-600 shrink-0" />
+                <span className="truncate max-w-[280px] sm:max-w-none">{selectedLocation.name}</span>
               </h2>
+            </div>
+
+            <div className="flex items-center gap-2 flex-wrap">
+              {/* Export PDF Button inside header */}
+              <button
+                onClick={handleDownloadPDF}
+                disabled={isDownloadingPDF}
+                title="Download Comprehensive Basin Assessment as PDF"
+                className="px-3 py-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 text-emerald-800 text-xs font-bold flex items-center gap-1.5 transition cursor-pointer disabled:opacity-50"
+              >
+                {isDownloadingPDF ? (
+                  <Loader2 className="w-3.5 h-3.5 animate-spin text-emerald-600" />
+                ) : (
+                  <FileDown className="w-3.5 h-3.5 text-emerald-600" />
+                )}
+                <span>Download Report (PDF)</span>
+              </button>
+
+              {/* Interactive Layer Checkboxes */}
+              <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap text-xs">
+                <label className="flex items-center gap-1.5 bg-blue-50/80 hover:bg-blue-100/70 px-2.5 py-1.5 rounded-lg border border-blue-200 cursor-pointer select-none transition text-[11px] sm:text-xs font-bold text-blue-900">
+                  <input
+                    type="checkbox"
+                    checked={visibleLayers.dams}
+                    onChange={(e) => setVisibleLayers((prev) => ({ ...prev, dams: e.target.checked }))}
+                    className="rounded accent-blue-600 cursor-pointer"
+                  />
+                  <span>💧 Dams ({damsData.length})</span>
+                </label>
+
+                <label className="flex items-center gap-1.5 bg-emerald-50/80 hover:bg-emerald-100/70 px-2.5 py-1.5 rounded-lg border border-emerald-200 cursor-pointer select-none transition text-[11px] sm:text-xs font-bold text-emerald-900">
+                  <input
+                    type="checkbox"
+                    checked={visibleLayers.groundwater}
+                    onChange={(e) =>
+                      setVisibleLayers((prev) => ({ ...prev, groundwater: e.target.checked }))
+                    }
+                    className="rounded accent-emerald-600 cursor-pointer"
+                  />
+                  <span>📍 Wells ({groundwaterData.length})</span>
+                </label>
+
+                <label className="flex items-center gap-1.5 bg-rose-50/80 hover:bg-rose-100/70 px-2.5 py-1.5 rounded-lg border border-rose-200 cursor-pointer select-none transition text-[11px] sm:text-xs font-bold text-rose-900">
+                  <input
+                    type="checkbox"
+                    checked={visibleLayers.droughtZones}
+                    onChange={(e) =>
+                      setVisibleLayers((prev) => ({ ...prev, droughtZones: e.target.checked }))
+                    }
+                    className="rounded accent-rose-600 cursor-pointer"
+                  />
+                  <span>⚠️ Drought</span>
+                </label>
+              </div>
             </div>
           </div>
 
-          {/* Interactive Layer Checkboxes */}
-          <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap text-xs">
-            <span className="text-slate-600 font-bold flex items-center gap-1 mr-0.5 text-[11px] sm:text-xs">
-              <SlidersHorizontal className="w-3.5 h-3.5 text-blue-600" /> Layers:
-            </span>
-
-            <label className="flex items-center gap-1.5 bg-blue-50/80 hover:bg-blue-100/70 px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-lg border border-blue-200 cursor-pointer select-none transition text-[11px] sm:text-xs">
-              <input
-                type="checkbox"
-                checked={visibleLayers.dams}
-                onChange={(e) => setVisibleLayers((prev) => ({ ...prev, dams: e.target.checked }))}
-                className="rounded accent-blue-600 cursor-pointer"
-              />
-              <span className="text-blue-900 font-bold">💧 Dams ({damsData.length})</span>
-            </label>
-
-            <label className="flex items-center gap-1.5 bg-emerald-50/80 hover:bg-emerald-100/70 px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-lg border border-emerald-200 cursor-pointer select-none transition text-[11px] sm:text-xs">
-              <input
-                type="checkbox"
-                checked={visibleLayers.groundwater}
-                onChange={(e) =>
-                  setVisibleLayers((prev) => ({ ...prev, groundwater: e.target.checked }))
-                }
-                className="rounded accent-emerald-600 cursor-pointer"
-              />
-              <span className="text-emerald-900 font-bold">
-                📍 Wells ({groundwaterData.length})
-              </span>
-            </label>
-
-            <label className="flex items-center gap-1.5 bg-rose-50/80 hover:bg-rose-100/70 px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-lg border border-rose-200 cursor-pointer select-none transition text-[11px] sm:text-xs">
-              <input
-                type="checkbox"
-                checked={visibleLayers.droughtZones}
-                onChange={(e) =>
-                  setVisibleLayers((prev) => ({ ...prev, droughtZones: e.target.checked }))
-                }
-                className="rounded accent-rose-600 cursor-pointer"
-              />
-              <span className="text-rose-900 font-bold">⚠️ Drought Zones</span>
-            </label>
-          </div>
-        </div>
+          {/* Universal Search Bar with Live Autosuggest & GPS Detector */}
+          <SearchBar
+            onSelectResult={handleSelectLocation}
+            onDetectLocation={detectUserLocation}
+            isLocating={isLocating}
+            placeholder="Search any dam (Mettur, Vaigai...), district (Salem, Erode...), or area to focus..."
+          />
+        </section>
 
         {/* ======================================================== */}
         {/* PAGE 1: EXECUTIVE DASHBOARD OVERVIEW                     */}
@@ -274,7 +394,7 @@ export default function Home() {
                   {nearestStation?.status || 'Safe'} Aquifer
                 </p>
                 <div className="mt-2.5 sm:mt-3 flex items-center gap-1 text-[11px] sm:text-xs text-blue-600 font-bold group-hover:translate-x-1 transition">
-                  <span>View Aquifers</span> <ArrowRight className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+                  <span>View Aquifers</span> <ArrowRight className="w-3.5 h-3.5" />
                 </div>
               </div>
 
@@ -303,7 +423,7 @@ export default function Home() {
                   {weather?.humidity || 65}% Humidity
                 </p>
                 <div className="mt-2.5 sm:mt-3 flex items-center gap-1 text-[11px] sm:text-xs text-blue-600 font-bold group-hover:translate-x-1 transition">
-                  <span>Rain Forecast</span> <ArrowRight className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+                  <span>Rain Forecast</span> <ArrowRight className="w-3.5 h-3.5" />
                 </div>
               </div>
 
@@ -330,7 +450,7 @@ export default function Home() {
                   {suitability?.rating || 'Moderately Suitable'}
                 </p>
                 <div className="mt-2.5 sm:mt-3 flex items-center gap-1 text-[11px] sm:text-xs text-blue-600 font-bold group-hover:translate-x-1 transition">
-                  <span>Irrigation Plan</span> <ArrowRight className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+                  <span>Irrigation Plan</span> <ArrowRight className="w-3.5 h-3.5" />
                 </div>
               </div>
             </div>
@@ -352,10 +472,10 @@ export default function Home() {
                 />
               </div>
 
-              {/* Dashboard Side Highlights */}
+              {/* Dashboard Side Highlights with built-in search */}
               <div className="lg:col-span-4 flex flex-col justify-between space-y-4">
                 <DamLevelWidget
-                  nearestDams={nearestDams.slice(0, 3)}
+                  nearestDams={nearestDams.slice(0, 5)}
                   onSelectDam={(dam) => handleSelectLocation(dam.lat, dam.lng, dam.name)}
                   locationName={selectedLocation.name}
                 />
@@ -390,7 +510,7 @@ export default function Home() {
                   <Sprout className="w-5 h-5" />
                 </div>
                 <div>
-                  <h4 className="font-bold text-sm text-slate-900">Agro-Suitability & Irrigation</h4>
+                  <h4 className="font-bold text-sm text-slate-900">Agro-Suitability &amp; Irrigation</h4>
                   <p className="text-xs text-slate-500 mt-1">
                     Calculate crop viability, rain-skip water savings, and precision drip schedules.
                   </p>
@@ -441,7 +561,7 @@ export default function Home() {
               />
             </div>
 
-            {/* Dedicated Dam Calculator List */}
+            {/* Dedicated Dam Calculator List with Search & Capacity Filters */}
             <div>
               <DamLevelWidget
                 nearestDams={nearestDams}
@@ -457,7 +577,7 @@ export default function Home() {
         {/* ======================================================== */}
         {activeTab === 'weather' && (
           <div className="space-y-6">
-            <div className="max-w-4xl mx-auto">
+            <div className="max-w-4xl mx-auto space-y-4">
               <WeatherWidget
                 weather={weather}
                 locationName={selectedLocation.name}
@@ -475,6 +595,7 @@ export default function Home() {
             <GroundwaterWidget
               station={nearestStation}
               locationName={selectedLocation.name}
+              onSelectStation={(st) => handleSelectLocation(st.lat, st.lng, st.stationName)}
             />
             <SoilMoistureWidget
               weather={weather}
@@ -518,6 +639,7 @@ export default function Home() {
               <GroundwaterWidget
                 station={nearestStation}
                 locationName={selectedLocation.name}
+                onSelectStation={(st) => handleSelectLocation(st.lat, st.lng, st.stationName)}
               />
             </div>
           </div>
@@ -557,7 +679,7 @@ export default function Home() {
           <div className="flex items-center gap-2">
             <span className="font-extrabold text-blue-950">NEER-AI</span>
             <span>•</span>
-            <span>Smart Water & Agro-Intelligence Platform</span>
+            <span>Smart Water &amp; Agro-Intelligence Platform</span>
           </div>
           <div className="flex items-center gap-3 text-slate-500 font-medium text-[11px] sm:text-xs">
             <span>760 NWIC Dam Reservoirs</span>
