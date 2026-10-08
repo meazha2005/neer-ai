@@ -17,10 +17,12 @@ import {
   X,
   FileDown,
   Sparkles,
+  Activity,
 } from 'lucide-react';
 
 export type NavTabType =
   | 'dashboard'
+  | 'security'
   | 'predictions'
   | 'map'
   | 'weather'
@@ -76,6 +78,7 @@ export default function Navbar({
 
   const navItems: { id: NavTabType; label: string; icon: React.ElementType; badge?: string }[] = [
     { id: 'dashboard', label: 'Dashboard', icon: BarChart3 },
+    { id: 'security', label: 'Water Security Suite', icon: Activity, badge: '7 Engines' },
     { id: 'predictions', label: 'Area Predictions', icon: Sparkles, badge: 'AI Models' },
     { id: 'map', label: 'Live Map & Dams', icon: Map, badge: '760 Dams' },
     { id: 'weather', label: 'Weather & Rain', icon: CloudSun, badge: '24h Rain' },

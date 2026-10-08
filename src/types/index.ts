@@ -109,3 +109,100 @@ export interface WaterComplaint {
   assignedOfficer?: string;
   resolutionNotes?: string;
 }
+
+// ==========================================
+// ADVANCED HYDROLOGICAL ENGINES TYPES
+// ==========================================
+
+export interface EnsoImpactData {
+  ensoPhase: 'El Niño (Warm)' | 'La Niña (Cool)' | 'ENSO-Neutral';
+  sstAnomalyDegC: number;
+  iodPhase: 'Positive' | 'Neutral' | 'Negative';
+  iodAnomalyDegC: number;
+  monsoonImpactSummary: string;
+  confidenceScore: number; // 0 - 100%
+  expectedRainfall90DaysMm: number;
+  rainfallUncertaintyMarginMm: number; // ± mm
+  historicalAnalogYears: string[];
+}
+
+export interface SupplyDemandSector {
+  sector: 'Drinking & Domestic' | 'Agriculture & Irrigation' | 'Industrial & Commercial' | 'Ecological Reserve (E-Flow)';
+  demandMCM: number;
+  allocatedMCM: number;
+  deficitMCM: number;
+  fulfillmentPercent: number;
+  priorityLevel: 1 | 2 | 3 | 4;
+}
+
+export interface SupplyDemandData {
+  surfaceStorageMCM: number;
+  groundwaterAvailableMCM: number;
+  rainfallInfiltrationMCM: number;
+  recycledWaterMCM: number;
+  totalSupplyMCM: number;
+  totalDemandMCM: number;
+  netBalanceMCM: number; // positive = surplus, negative = deficit
+  stressCategory: 'Surplus' | 'Sustainable' | 'Moderate Stress' | 'Severe Deficit';
+  sectors: SupplyDemandSector[];
+}
+
+export interface SecurityScenarioProjection {
+  day30MCM: number;
+  day60MCM: number;
+  day90MCM: number;
+  dayZeroEstimateDays: number | null; // days until critical shortage if any
+  riskLevel: 'Safe' | 'Watch' | 'Critical Stress' | 'Emergency';
+}
+
+export interface WaterSecurity90Day {
+  scenarios: {
+    dry: SecurityScenarioProjection;
+    normal: SecurityScenarioProjection;
+    wet: SecurityScenarioProjection;
+  };
+  activeScenario: 'dry' | 'normal' | 'wet';
+  criticalDayZeroWarning: string | null;
+}
+
+export interface StakeholderAction {
+  persona: 'Farmers' | 'Water Authorities' | 'Communities' | 'Industries' | 'Ecosystems';
+  headline: string;
+  actions: string[];
+  waterSavingsPotentialMCM: number;
+  urgency: 'Immediate (24h)' | 'Planned (7d)' | 'Strategic (30d)';
+}
+
+export interface ExplainableDecision {
+  primaryRecommendation: string;
+  confidencePercent: number;
+  rationaleFactors: {
+    factor: string;
+    impact: 'High' | 'Medium' | 'Low';
+    measuredValue: string;
+    threshold: string;
+  }[];
+  stakeholders: StakeholderAction[];
+}
+
+export interface EcosystemWarningData {
+  eFlowCompliancePercent: number;
+  ecologicalReserveMCM: number;
+  ecosystemStressScore: number; // 0 (healthy) - 100 (acute crisis)
+  droughtStage: 'Stage 1: Basin Advisory' | 'Stage 2: Moderate Drought' | 'Stage 3: Severe Drought' | 'Stage 4: Extreme Emergency';
+  criticalShortageDays: number;
+  alerts: string[];
+}
+
+export interface ImpactComparisonData {
+  metrics: {
+    metric: string;
+    withoutNeerAi: string;
+    withNeerAi: string;
+    benefit: string;
+  }[];
+  totalWaterSavedMCM: number;
+  percentLossReduced: number;
+  economicBenefitCroresINR: number;
+  droughtDaysAvoided: number;
+}
