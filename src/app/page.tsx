@@ -14,6 +14,7 @@ import ComplaintModal from '@/components/Complaints/ComplaintModal';
 import AdminDashboard from '@/components/Complaints/AdminDashboard';
 import ChatbotDrawer from '@/components/Chatbot/ChatbotDrawer';
 import SearchBar from '@/components/SearchBar';
+import AreaPredictionsPage from '@/components/AreaPredictionsPage';
 import { generateHydrologicalPDF } from '@/lib/pdfGenerator';
 
 import { Dam, GroundwaterStation, LiveWeatherData, AgroSuitabilityResult, WaterComplaint } from '@/types';
@@ -39,6 +40,7 @@ import {
   Navigation,
   FileDown,
   Loader2,
+  Sparkles,
 } from 'lucide-react';
 
 export default function Home() {
@@ -276,6 +278,21 @@ export default function Home() {
             </div>
 
             <div className="flex items-center gap-2 flex-wrap">
+              {/* Dedicated Area Predictions & Recommendations Shortcut */}
+              <button
+                onClick={() => setActiveTab('predictions')}
+                title="View in-depth AI predictions, inflow models & recommendations for this area"
+                className={`px-3 py-1.5 rounded-lg text-xs font-black flex items-center gap-1.5 transition cursor-pointer shadow-xs ${
+                  activeTab === 'predictions'
+                    ? 'bg-blue-600 text-white shadow-blue-500/20'
+                    : 'bg-blue-50 hover:bg-blue-100 text-blue-900 border border-blue-200'
+                }`}
+              >
+                <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+                <span className="hidden sm:inline">Area Predictions &amp; Advisory</span>
+                <span className="sm:hidden">AI Advisory</span>
+              </button>
+
               {/* Export PDF Button inside header */}
               <button
                 onClick={handleDownloadPDF}
@@ -344,6 +361,36 @@ export default function Home() {
         {/* ======================================================== */}
         {activeTab === 'dashboard' && (
           <div className="space-y-4 sm:space-y-6">
+            {/* Direct Gateway to Dedicated Area Predictions & Recommendations Page */}
+            <div
+              onClick={() => setActiveTab('predictions')}
+              className="bg-gradient-to-r from-blue-700 via-blue-600 to-sky-600 rounded-2xl p-4 sm:p-5 text-white shadow-md shadow-blue-600/15 flex flex-col sm:flex-row sm:items-center justify-between gap-3.5 cursor-pointer group hover:opacity-95 transition"
+            >
+              <div className="flex items-start gap-3">
+                <div className="w-10 h-10 rounded-xl bg-white/20 backdrop-blur-md flex items-center justify-center shrink-0 text-white mt-0.5">
+                  <Sparkles className="w-5 h-5 text-amber-300" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-[10px] font-black uppercase tracking-wider bg-white/20 px-2 py-0.5 rounded-full border border-white/20">
+                      Dedicated Area Intelligence
+                    </span>
+                    <span className="text-xs text-sky-100 font-bold">📍 {selectedLocation.name}</span>
+                  </div>
+                  <h3 className="text-sm sm:text-base font-black tracking-tight mt-1 text-white">
+                    Area Predictions, Inflow Models &amp; Precision Recommendations
+                  </h3>
+                  <p className="text-xs text-sky-100 mt-0.5 max-w-xl">
+                    Access scientific 7-day rainfall projections, 3-depth soil moisture trajectories, reservoir runoff models, and customized crop &amp; irrigation schedules for this area.
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-1.5 bg-white text-blue-900 font-black text-xs px-3.5 py-2 rounded-xl shrink-0 group-hover:scale-105 transition shadow-xs self-start sm:self-auto">
+                <span>Open Area Advisory</span>
+                <ArrowRight className="w-3.5 h-3.5 text-blue-700" />
+              </div>
+            </div>
+
             {/* 4 Summary KPI Cards */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
               {/* Catchment Dam Storage */}
@@ -539,6 +586,23 @@ export default function Home() {
               </div>
             </div>
           </div>
+        )}
+
+        {/* ======================================================== */}
+        {/* DEDICATED PAGE: PREDICTIONS & RECOMMENDATIONS FOR AREA   */}
+        {/* ======================================================== */}
+        {activeTab === 'predictions' && (
+          <AreaPredictionsPage
+            selectedLocation={selectedLocation}
+            weather={weather}
+            nearestDams={nearestDams}
+            nearestStation={nearestStation}
+            suitability={suitability}
+            onSelectLocation={handleSelectLocation}
+            onDownloadPDF={handleDownloadPDF}
+            isDownloadingPDF={isDownloadingPDF}
+            onNavigateToMap={() => setActiveTab('map')}
+          />
         )}
 
         {/* ======================================================== */}

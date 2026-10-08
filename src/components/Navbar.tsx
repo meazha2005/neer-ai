@@ -16,10 +16,12 @@ import {
   Menu,
   X,
   FileDown,
+  Sparkles,
 } from 'lucide-react';
 
 export type NavTabType =
   | 'dashboard'
+  | 'predictions'
   | 'map'
   | 'weather'
   | 'groundwater'
@@ -74,6 +76,7 @@ export default function Navbar({
 
   const navItems: { id: NavTabType; label: string; icon: React.ElementType; badge?: string }[] = [
     { id: 'dashboard', label: 'Dashboard', icon: BarChart3 },
+    { id: 'predictions', label: 'Area Predictions', icon: Sparkles, badge: 'AI Models' },
     { id: 'map', label: 'Live Map & Dams', icon: Map, badge: '760 Dams' },
     { id: 'weather', label: 'Weather & Rain', icon: CloudSun, badge: '24h Rain' },
     { id: 'groundwater', label: 'Groundwater & Soil', icon: Layers },
@@ -304,6 +307,16 @@ export default function Navbar({
         >
           <BarChart3 className="w-4 h-4" />
           <span>Home</span>
+        </button>
+
+        <button
+          onClick={() => handleSelectTab('predictions')}
+          className={`flex flex-col items-center py-1 px-2 rounded-lg text-[10px] font-bold transition ${
+            activeTab === 'predictions' ? 'text-blue-600 font-black' : 'text-slate-500'
+          }`}
+        >
+          <Sparkles className="w-4 h-4 text-amber-500" />
+          <span>AI Area</span>
         </button>
 
         <button
