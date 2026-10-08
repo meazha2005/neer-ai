@@ -1,0 +1,50 @@
+[
+  {
+    "district": "Dharmapuri",
+    "severity": "Severe Drought",
+    "rainfallDeficitPercentage": -48,
+    "description": "Prolonged dry spell over past 6 weeks. Borewell water tables dropped by 4.2m bgl.",
+    "recommendedAction": "Enforce emergency water rationing for irrigation; supply drinking water through tankers; activate PMKSY drip subsidy.",
+    "updatedDate": "2026-10-06"
+  },
+  {
+    "district": "Vellore",
+    "severity": "Moderate Drought",
+    "rainfallDeficitPercentage": -34,
+    "description": "Reservoir levels below 30% storage capacity. Palar river sub-surface extraction under restriction.",
+    "recommendedAction": "Encourage cultivation of short-duration millets and pulses; restrict daylight flood irrigation.",
+    "updatedDate": "2026-10-07"
+  },
+  {
+    "district": "Ramanathapuram",
+    "severity": "Moderate Drought",
+    "rainfallDeficitPercentage": -31,
+    "description": "Saline ingress risk due to heavy groundwater extraction. Water table critical.",
+    "recommendedAction": "Subsidized distribution of salt-tolerant crop seeds; rainwater harvesting structure desilting.",
+    "updatedDate": "2026-10-05"
+  },
+  {
+    "district": "Salem",
+    "severity": "Advisory",
+    "rainfallDeficitPercentage": -18,
+    "description": "Localized dry spell in northern blocks; moderate ground storage.",
+    "recommendedAction": "Monitor dam outflow from Stanley/Mettur reservoir; promote mulch and micro-irrigation.",
+    "updatedDate": "2026-10-08"
+  },
+  {
+    "district": "Thanjavur",
+    "severity": "Normal",
+    "rainfallDeficitPercentage": 6,
+    "description": "Adequate canal water supply through Grand Anicut / Cauvery Delta network. Samba crop sowing in progress.",
+    "recommendedAction": "Maintain routine rotational canal releases and prevent tail-end water wastage.",
+    "updatedDate": "2026-10-08"
+  },
+  {
+    "district": "Coimbatore",
+    "severity": "Advisory",
+    "rainfallDeficitPercentage": -15,
+    "description": "Western Ghat catchment inflows stable; groundwater table requires continuous recharge check.",
+    "recommendedAction": "Promote drip irrigation for coconut plantations and vegetables.",
+    "updatedDate": "2026-10-07"
+  }
+]
